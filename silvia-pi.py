@@ -6,8 +6,8 @@ def scheduler(dummy,state):
   import schedule
   from datetime import datetime
 
-  sys.stdout = open("scheduler.log", "a", buffering=0)
-  sys.stderr = open("scheduler.err.log", "a", buffering=0)
+  sys.stdout = open("scheduler.log", "a")
+  sys.stderr = open("scheduler.err.log", "a")
 
   print ("Starting scheduler thread ...")
 
