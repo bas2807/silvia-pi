@@ -108,8 +108,8 @@ def pid_loop(dummy,state):
   import PID as PID
   import config as conf
 
-  sys.stdout = open("pid.log", "a", buffering=0)
-  sys.stderr = open("pid.err.log", "a", buffering=0)
+  sys.stdout = open("pid.log", "a")
+  sys.stderr = open("pid.err.log", "a")
 
   pi = pigpio.pi()
   tsic = TsicInputChannel(pigpio_pi=pi, gpio=conf.tsic_pin, tsic_type=TSIC306)
