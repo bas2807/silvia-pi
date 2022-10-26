@@ -18,11 +18,6 @@ git clone https://github.com/adafruit/Adafruit_Python_GPIO.git
 cd ~/Adafruit_Python_GPIO
 python setup.py install
 
-echo "Installing MAX31855 Thermocouple Amp library..."
-cd ~
-git clone https://github.com/adafruit/Adafruit_Python_MAX31855.git
-cd ~/Adafruit_Python_MAX31855
-python setup.py install
 
 echo "Installing ivPID library..."
 cd ~

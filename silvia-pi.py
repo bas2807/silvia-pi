@@ -9,7 +9,7 @@ def scheduler(dummy,state):
   sys.stdout = open("scheduler.log", "a", buffering=0)
   sys.stderr = open("scheduler.err.log", "a", buffering=0)
 
-  print "Starting scheduler thread ..."
+  print ("Starting scheduler thread ...")
 
   last_wake = 0
   last_sleep = 0
@@ -103,17 +103,16 @@ def pid_loop(dummy,state):
   from time import sleep, time
   from math import isnan
   import Adafruit_GPIO.SPI as SPI
-  import Adafruit_MAX31855.MAX31855 as MAX31855
+  import pigpio
+  from tsic import TsicInputChannel, Measurement, TSIC306
   import PID as PID
   import config as conf
 
   sys.stdout = open("pid.log", "a", buffering=0)
   sys.stderr = open("pid.err.log", "a", buffering=0)
 
-  def c_to_f(c):
-    return c * 9.0 / 5.0 + 32.0
-
-  sensor = MAX31855.MAX31855(spi=SPI.SpiDev(conf.spi_port, conf.spi_dev))
+  pi = pigpio.pi()
+  tsic = TsicInputChannel(pigpio_pi=pi, gpio=conf.tsic_pin, tsic_type=TSIC306)
 
   pid = PID.PID(conf.Pc,conf.Ic,conf.Dc)
   pid.SetPoint = state['settemp']
@@ -136,7 +135,7 @@ def pid_loop(dummy,state):
 
   try:
     while True : # Loops 10x/second
-      tempc = sensor.readTempC()
+      tempc = tsic.measurement.degree_celsius
       if isnan(tempc) :
         nanct += 1
         if nanct > 100000 :
@@ -145,14 +144,13 @@ def pid_loop(dummy,state):
       else:
         nanct = 0
 
-      tempf = c_to_f(tempc)
-      temphist[i%5] = tempf
+      temphist[i%5] = tempc
       avgtemp = sum(temphist)/len(temphist)
 
-      if avgtemp < 100 :
+      if avgtemp < 38 :
         lastcold = i
 
-      if avgtemp > 200 :
+      if avgtemp > 93 :
         lastwarm = i
 
       if iscold and (i-lastcold)*conf.sample_time > 60*15 :
@@ -161,7 +159,7 @@ def pid_loop(dummy,state):
         pid.setSampleTime(conf.sample_time*5)
         iscold = False
 
-      if iswarm and (i-lastwarm)*conf.sample_time > 60*15 : 
+      if iswarm and (i-lastwarm)*conf.sample_time > 60*15 :
         pid = PID.PID(conf.Pc,conf.Ic,conf.Dc)
         pid.SetPoint = state['settemp']
         pid.setSampleTime(conf.sample_time*5)
@@ -178,7 +176,7 @@ def pid_loop(dummy,state):
         avgpid = sum(pidhist)/len(pidhist)
 
       state['i'] = i
-      state['tempf'] = round(tempf,2)
+      state['tempc'] = round(tempc,2)
       state['avgtemp'] = round(avgtemp,2)
       state['pidval'] = round(pidout,2)
       state['avgpid'] = round(avgpid,2)
@@ -191,7 +189,7 @@ def pid_loop(dummy,state):
         state['dterm'] = round(pid.DTerm * conf.Dw,2)
       state['iscold'] = iscold
 
-      print time(), state
+      print (time(), state)
 
       sleeptime = lasttime+conf.sample_time-time()
       if sleeptime < 0 :
@@ -233,11 +231,11 @@ def rest_server(dummy,state):
   def post_settemp():
     try:
       settemp = float(request.forms.get('settemp'))
-      if settemp >= 200 and settemp <= 260 :
+      if settemp >= 93 and settemp <= 126 :
         state['settemp'] = settemp
         return str(settemp)
       else:
-        abort(400,'Set temp out of range 200-260.')
+        abort(400,'Set temp out of range 93-126.')
     except:
       abort(400,'Invalid number for set temp.')
 
@@ -312,28 +310,28 @@ if __name__ == '__main__':
   pidstate['settemp'] = conf.set_temp
   pidstate['avgpid'] = 0.
 
-  print "Starting Scheduler thread..."
+  print ("Starting Scheduler thread...")
   s = Process(target=scheduler,args=(1,pidstate))
   s.daemon = True
   s.start()
 
-  print "Starting PID thread..."
+  print ("Starting PID thread...")
   p = Process(target=pid_loop,args=(1,pidstate))
   p.daemon = True
   p.start()
 
-  print "Starting HE Control thread..."
+  print ("Starting HE Control thread...")
   h = Process(target=he_control_loop,args=(1,pidstate))
   h.daemon = True
   h.start()
 
-  print "Starting REST Server thread..."
+  print ("Starting REST Server thread...")
   r = Process(target=rest_server,args=(1,pidstate))
   r.daemon = True
   r.start()
 
   #Start Watchdog loop
-  print "Starting Watchdog..."
+  print ("Starting Watchdog...")
   piderr = 0
   weberr = 0
   weberrflag = 0
@@ -352,7 +350,7 @@ if __name__ == '__main__':
     lasti = curi
 
     if piderr > 9 :
-      print 'ERROR IN PID THREAD, RESTARTING'
+      print ('ERROR IN PID THREAD, RESTARTING')
       p.terminate()
 
     try:
@@ -367,7 +365,7 @@ if __name__ == '__main__':
       weberr = weberr + 1
 
     if weberr > 9 :
-      print 'ERROR IN WEB SERVER THREAD, RESTARTING'
+      print ('ERROR IN WEB SERVER THREAD, RESTARTING')
       r.terminate()
 
     weberrflag = 0
