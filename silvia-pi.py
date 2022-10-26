@@ -292,7 +292,7 @@ def rest_server(dummy,state):
   def healthcheck():
     return 'OK'
 
-  run(host='0.0.0.0',port=conf.port,server='cheroot', debug=True)
+  run(host='192.168.3.148',port=conf.port,server='cheroot', debug=True)
 
 if __name__ == '__main__':
   from multiprocessing import Process, Manager
